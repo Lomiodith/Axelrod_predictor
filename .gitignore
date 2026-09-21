@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# cached downloads and fitted models are rebuildable
+data/*.pkl
+models/*.joblib
+
+# never commit credentials
+.env
+WTI_Direction_Model.ipynb
+WTI_Price_Model.ipynb

@@ -1,0 +1,6 @@
+pandas==3.0.1
+numpy==2.4.3
+scikit-learn==1.8.0
+yfinance==1.7.0
+joblib==1.4.2
+pytest==9.0.2
