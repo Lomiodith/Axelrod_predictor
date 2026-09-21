@@ -1,0 +1,62 @@
+name: Train and predict
+
+# Started by hand from the Actions tab: "Run workflow", pick a horizon.
+on:
+  workflow_dispatch:
+    inputs:
+      horizon:
+        description: "Which model to train and score"
+        type: choice
+        options: [daily, hourly]
+        default: daily
+
+jobs:
+  train-and-predict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HORIZON: ${{ inputs.horizon }}
+    defaults:
+      run:
+        shell: bash   # explicit, so pipelines fail if any command in them fails
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.9"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Cheap gate: no point downloading years of data if the code is broken.
+      - name: Run tests
+        run: python -m pytest tests/
+
+      # The runner starts empty, so this downloads the full history and fits from scratch.
+      - name: Train
+        run: python -m wti train --horizon "$HORIZON" --quiet
+
+      - name: Predict
+        run: python -m wti predict --horizon "$HORIZON" --quiet | tee prediction.txt
+
+      - name: Write summary
+        run: |
+          {
+            echo "## WTI prediction ($HORIZON)"
+            echo '```'
+            cat prediction.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The runner is thrown away after the job; this keeps the fitted model and the
+      # prediction downloadable from the run page for 30 days.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wti-${{ inputs.horizon }}-${{ github.run_number }}
+          path: |
+            models/*.joblib
+            prediction.txt
+          retention-days: 30
