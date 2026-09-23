@@ -107,7 +107,7 @@ def train(horizon: Horizon, refresh: bool = False, show_coverage: bool = False) 
         "resid_std": float((y_test - best_pred).std()) if not horizon.is_classification else None,
         "trained_at": dt.datetime.now().isoformat(timespec="seconds"),
     }
-    MODEL_DIR.mkdir(exist_ok=True)
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(artifact, horizon.artifact_path)
     print(f"Saved {horizon.artifact_path}")
     return artifact

@@ -1,0 +1,13 @@
+# Keep the build context to the code. Caches and models live in volumes on the VM, and
+# a model pickled on Windows must never be baked into the Linux image.
+.git/
+.github/
+.pytest_cache/
+**/__pycache__/
+*.pyc
+*.ipynb
+.ipynb_checkpoints/
+data/
+models/
+.env
+tests/

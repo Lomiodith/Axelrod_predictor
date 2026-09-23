@@ -1,0 +1,21 @@
+#!/bin/sh
+# Lint staged Dockerfiles with hadolint. Enable once per clone:
+#   git config core.hooksPath .githooks
+# Bypass for a single commit: git commit --no-verify
+
+files=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '(^|/)Dockerfile[^/]*$')
+[ -z "$files" ] && exit 0
+
+if ! command -v hadolint >/dev/null 2>&1; then
+    echo "pre-commit: hadolint not found, skipping Dockerfile lint" >&2
+    exit 0
+fi
+
+status=0
+echo "$files" | while IFS= read -r f; do
+    echo "hadolint: $f"
+    # Lint the staged version, not the working tree, so partial staging is respected.
+    git show ":$f" | hadolint - || exit 1
+done || status=1
+
+exit $status

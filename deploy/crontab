@@ -1,0 +1,20 @@
+# WTI predictor schedule. Install with `crontab deploy/crontab`, check with `crontab -l`.
+#
+# All times are UTC. CRON_TZ is honoured by cronie (RHEL, Fedora, Arch) but not by
+# Debian/Ubuntu cron, which uses the system zone: there, make sure `timedatectl` says UTC.
+# Assumes the repo is cloned at ~/Axelrod_predictor; change the paths below if it is not.
+# ~/wti-logs is created by the first manual `deploy/wti.sh` run, before cron needs it.
+CRON_TZ=UTC
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# m  h   dom mon dow   command
+# Retrain daily on Saturdays: markets are shut and a full week of new bars is in.
+0    6   *   *   6     $HOME/Axelrod_predictor/deploy/wti.sh train daily    >> $HOME/wti-logs/cron.log 2>&1
+# Retrain hourly on Sundays.
+0    6   *   *   0     $HOME/Axelrod_predictor/deploy/wti.sh train hourly   >> $HOME/wti-logs/cron.log 2>&1
+# Predict daily after the 17:00 New York close (21:00 or 22:00 UTC, depending on DST).
+30   22  *   *   1-5   $HOME/Axelrod_predictor/deploy/wti.sh predict daily  >> $HOME/wti-logs/cron.log 2>&1
+# Predict hourly, Sunday 22:00 to Friday 22:00. This line also runs Sunday before the
+# open and late Friday; those predictions just re-score the last bar.
+5    *   *   *   0-5   $HOME/Axelrod_predictor/deploy/wti.sh predict hourly >> $HOME/wti-logs/cron.log 2>&1

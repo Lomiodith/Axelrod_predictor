@@ -18,8 +18,19 @@ os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(max((os.cpu_count() or 2) // 2, 
 SEED = 42
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-MODEL_DIR = PROJECT_ROOT / "models"
+
+
+def dir_from_env(var: str, default: Path) -> Path:
+    """``$var`` as a Path when it is set and non-empty, else ``default``.
+
+    Lets a container point the caches at mounted volumes without touching the code.
+    """
+    value = os.environ.get(var, "").strip()
+    return Path(value).expanduser() if value else default
+
+
+DATA_DIR = dir_from_env("WTI_DATA_DIR", PROJECT_ROOT / "data")
+MODEL_DIR = dir_from_env("WTI_MODEL_DIR", PROJECT_ROOT / "models")
 
 
 @dataclass(frozen=True)

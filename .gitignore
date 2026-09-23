@@ -11,3 +11,4 @@ models/*.joblib
 .env
 WTI_Direction_Model.ipynb
 WTI_Price_Model.ipynb
+NEXT_STEPS.md

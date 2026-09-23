@@ -42,7 +42,14 @@ class Panel:
 
 def download(horizon: Horizon, period: str | None = None) -> pd.DataFrame:
     """Fetch raw multi-index data from Yahoo. No caching, no reshaping."""
-    kwargs: dict[str, object] = {"interval": horizon.interval, "auto_adjust": False, "progress": False}
+    kwargs: dict[str, object] = {
+        "interval": horizon.interval,
+        "auto_adjust": False,
+        "progress": False,
+        # Serial download: parallel threads race on yfinance's empty SQLite cache in a
+        # fresh container ("database is locked"). A few seconds slower, same data.
+        "threads": False,
+    }
     if period is not None:
         kwargs["period"] = period
     elif horizon.period is not None:
@@ -64,7 +71,7 @@ def load_raw(horizon: Horizon, force: bool = False) -> pd.DataFrame:
         return pd.read_pickle(cache)
 
     raw = download(horizon)
-    DATA_DIR.mkdir(exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     raw.to_pickle(cache)
     print(f"Downloaded and cached to {cache}")
     return raw

@@ -18,7 +18,7 @@ The package was ported from `WTI_Direction_Model.ipynb` (hourly) and `WTI_Price_
 Run everything from the project root. There is no `pyproject.toml`, so `python -m wti` and the tests depend on the working directory (`pytest.ini` sets `pythonpath = .`).
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # runtime deps + pytest
 
 python -m wti train    --horizon daily     # fit, CV, select, hold-out eval, backtest, save
 python -m wti predict  --horizon hourly    # score latest bar with saved model (needs network)
@@ -26,7 +26,7 @@ python -m wti backtest --horizon daily     # re-run backtest from saved artifact
 python -m wti data     --horizon daily     # cache status / coverage
 # flags: --refresh (re-download), --quiet (mute warnings), train --coverage
 
-python -m pytest tests/                                            # full suite (37 tests)
+python -m pytest tests/                                            # full suite (41 tests)
 python -m pytest tests/test_models.py::test_select_best_can_minimise   # single test
 ```
 
@@ -49,7 +49,7 @@ The flow is `cli.py` (argparse only) → `pipeline.py` (orchestration) → `data
   Model selection uses mean CV scores. The hold-out is scored only after selection.
 - **Leakage rule.** A feature at time `t` may use only bars `<= t`. `tests/test_features.py` enforces this by recomputing features on a truncated series and diffing the last row. A new feature goes into one builder in `features.py`, and the leakage tests will catch timing errors. `tests/test_models.py` uses a `SpyEstimator` to assert the fold boundaries themselves.
 - **Artifacts.** `pipeline.train` saves a dict with `joblib.dump` to `models/wti_next_day.joblib` / `wti_next_hour.joblib`. Because these are pickles, training and prediction must use the same scikit-learn version. `data/*.pkl` and `models/*.joblib` are rebuildable caches.
-- `config.py` sets `LOKY_MAX_CPU_COUNT` before sklearn is imported, to avoid a Windows 11 `wmic` probe. `PROJECT_ROOT` is derived from the package location, so `data/` and `models/` always resolve next to `wti/`.
+- `config.py` sets `LOKY_MAX_CPU_COUNT` before sklearn is imported, to avoid a Windows 11 `wmic` probe. `PROJECT_ROOT` is derived from the package location, so `data/` and `models/` resolve next to `wti/` unless `WTI_DATA_DIR` / `WTI_MODEL_DIR` override them (the container sets `/data`, `/models`).
 
 ## Working with this user
 
@@ -60,5 +60,5 @@ The flow is `cli.py` (argparse only) → `pipeline.py` (orchestration) → `data
   - a pytest that defines correctness.
 
   Don't add step-by-step comments. Keep everything around the stub complete and wired up.
-- **Next planned step: a standalone Dockerfile.** `requirements.txt` is pinned (`==`) to the verified versions. Use Python 3.12.9 for the base image. Dependencies of those packages (scipy, requests, etc.) are not pinned yet. In a container, `data/` and `models/` should become volumes or env-configurable paths.
-- The project is not a git repository.
+- **Docker.** The VM uses **CLI + cron**. `Dockerfile` is a one-shot `python -m wti` image with `predict --horizon daily` as its default command. It was written by the user, so review it rather than rewriting. An HTTP API is out of scope for now. Checks: `hadolint Dockerfile` (lint), plus the `deploy/wti.sh` build → train daily → predict daily flow as the smoke test. `deploy/wti.sh` (build / train / predict / status) and `deploy/crontab` were written by Claude at the user's request (the spec is in the `wti.sh` header). The runtime is `requirements.txt` only, and `requirements-dev.txt` adds pytest (CI uses it). Train inside the container, never copy Windows-built `.joblib` files into it.
+- The project is a git repo on `main` with a manual GitHub Actions workflow (`.github/workflows/train-and-predict.yml`).
